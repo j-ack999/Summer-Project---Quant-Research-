@@ -5,6 +5,12 @@ import pandas as pd
 from datetime import timedelta
 import numpy as np
 
+
+## note to self for when you return to this code ##
+
+# widened data is data centred around the announcement date 
+
+
 def event_window(ticker, announcementDate):
 
     announcementDate = pd.to_datetime(announcementDate)
@@ -19,7 +25,8 @@ def event_window(ticker, announcementDate):
     widened_data['Cumulative Return'] = (1 + widened_data['Return']).cumprod() - 1 
     
     announcement_idx = widened_data.index.get_indexer([announcementDate], method='nearest')[0]
-    baseline = widened_data['Cumulative Return'].iloc[announcement_idx]
+    baseline_idx = max(announcement_idx - 1, 0)
+    baseline = widened_data['Cumulative Return'].iloc[baseline_idx]
     widened_data['Cumulative Return'] = widened_data['Cumulative Return'] - baseline
 
     
@@ -27,9 +34,7 @@ def event_window(ticker, announcementDate):
     # create an array of values from 0 to the length of widened data
     # subtract the index of the announcement date from each so that the announcement date is centered at zero
 
-
-    ##
-    plot_data = widened_data.dropna() # ignore NaN enteries 
+plot_data = widened_data.dropna()  # drop all rows with NaN values (the first row has no return value)
     plt.plot(plot_data.index, plot_data['Cumulative Return'] * 100)
     plt.title(ticker)
     plt.axvline(x=pd.Timestamp(announcementDate), color='red', linestyle='--', label='Announcement Day') # plot a vertical line at the date where the announcement was made 
@@ -51,18 +56,17 @@ def big_change(ticker, rangeStartDate, rangeEndDate): # use this function to loo
 
 
     full_data['Returns'] = full_data['Close'].pct_change()
-    full_data['Returns'] = full_data['Returns'].clip(lower=-0.9, upper=0.9)
+    full_data['Returns'] = full_data['Returns'].clip(lower=-0.9, upper=0.9) # clipping the returns to avoid outliers, for example stock splits
 
-    positive_change = full_data['Returns'].nlargest(10)*100
-    negative_change = full_data['Returns'].nsmallest(10)*100
+positive_change = full_data['Returns'].nlargest(10) * 100
+negative_change = full_data['Returns'].nsmallest(10) * 100
 
-    table_of_data = pd.DataFrame({
-        "Positive (%)": positive_change,
-        "Negative (%)": negative_change
-    })
-
-
+table_of_data = pd.DataFrame({
+    "Positive (%)": positive_change,
+    "Negative (%)": negative_change
+})
 
 
-    return table_of_data
+
+return table_of_data
 
