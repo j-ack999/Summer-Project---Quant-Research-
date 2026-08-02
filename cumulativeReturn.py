@@ -3,13 +3,14 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 import pandas as pd
 from datetime import timedelta
+import numpy as np
 
 def event_window(ticker, announcementDate):
 
     announcementDate = pd.to_datetime(announcementDate)
 
     startDate = announcementDate - timedelta(days=14)
-    endDate = announcementDate + timedelta(days=14)
+    endDate = announcementDate + timedelta(days=14) # look either side of the announcement date by a couple of weeks, ten trading days 
 
     widened_data = yf.download(ticker, startDate, endDate, auto_adjust=True)
 
@@ -21,8 +22,14 @@ def event_window(ticker, announcementDate):
     baseline = widened_data['Cumulative Return'].iloc[announcement_idx]
     widened_data['Cumulative Return'] = widened_data['Cumulative Return'] - baseline
 
+    
+    widened_data['      Trading Days Relative'] = np.arange(len(widened_data)) - announcement_idx
+    # create an array of values from 0 to the length of widened data
+    # subtract the index of the announcement date from each so that the announcement date is centered at zero
 
-    plot_data = widened_data.dropna()
+
+    ##
+    plot_data = widened_data.dropna() # ignore NaN enteries 
     plt.plot(plot_data.index, plot_data['Cumulative Return'] * 100)
     plt.title(ticker)
     plt.axvline(x=pd.Timestamp(announcementDate), color='red', linestyle='--', label='Announcement Day') # plot a vertical line at the date where the announcement was made 
@@ -31,8 +38,8 @@ def event_window(ticker, announcementDate):
     plt.tight_layout()
     plt.legend()
     plt.grid(True)
-    plt.show()
-
+    # plt.show()
+    ##
 
     return widened_data
 
@@ -46,27 +53,16 @@ def big_change(ticker, rangeStartDate, rangeEndDate): # use this function to loo
     full_data['Returns'] = full_data['Close'].pct_change()
     full_data['Returns'] = full_data['Returns'].clip(lower=-0.9, upper=0.9)
 
-    return [
-        full_data['Returns'].nsmallest(10),
-        full_data['Returns'].nlargest(10)
-    ] # return the ten largest DROPS and the // GAINS 
-    
-## FIND TOP GAIN / LOSS AND TRACE 
+    positive_change = full_data['Returns'].nlargest(10)*100
+    negative_change = full_data['Returns'].nsmallest(10)*100
 
-print(big_change('CTMX','2020-01-01','2025-01-01'))
-
-
-
-## FIND THE PRICE CHANGES FOR THE ANNOUNCEMENTS AND PLOT THEM ## 
-
-# pfizer = event_window('PFE','2020-11-09') 
-# bmy = event_window('BMY','2016-08-05') 
+    table_of_data = pd.DataFrame({
+        "Positive (%)": positive_change,
+        "Negative (%)": negative_change
+    })
 
 
 
 
-
-
-
-
+    return table_of_data
 
